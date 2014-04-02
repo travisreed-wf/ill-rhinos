@@ -1,4 +1,4 @@
-ill-rhinos
+Illustrious Rhinoceroses Group Project
 ==========
 
-Illustrious Rhinoceroses Group Project
+
