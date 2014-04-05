@@ -84,7 +84,7 @@ for current_dept in depts:
 
     currentNode = ''
     isu_class = {}
-    shits = []
+    courses = []
 
     for row in rows:
         cells = row.findAll('td')
@@ -98,7 +98,7 @@ for current_dept in depts:
                 currentNode = x
 
             elif attrs.get('colspan') == '7':
-                shits.append(isu_class)
+                courses.append(isu_class)
 
                 isu_class = {}
 
@@ -117,12 +117,12 @@ for current_dept in depts:
                 isu_class[currentNode] = info
 
 
-    for shit in shits:
-        shit['SECTION'] = parseSection(shit['SECTION'])
-        shit['COURSE'] = parseCourse(shit['COURSE'], ' '.join(current_dept.split('+')))
+    for course in courses:
+        course['SECTION'] = parseSection(course['SECTION'])
+        course['COURSE'] = parseCourse(course['COURSE'], ' '.join(current_dept.split('+')))
     else:
         print current_dept
         filename = '../class_data/%s.json' % (current_dept,)
         with open(filename, 'w') as outfile:
-            json.dump(shits, outfile)
+            json.dump(courses, outfile)
 
