@@ -125,7 +125,7 @@ table {
     $('#class-filter').change(function(data) {
         var value = $(this).val();
         $('tbody').html(renderTable(currentCourses.filter(function(course) {
-          return course.COURSE === value;
+          return course.COURSE === value || value === '-';
         })));
     });
 
