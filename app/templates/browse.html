@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Browse{% endblock %}
+
+{% block css %}
+<style type="text/css">
+#search {
+  margin-top: 15px;
+}
+table {
+  margin-top: 15px;
+  font-size: 12px;
+  width:100%;
+  margin-bottom: 30px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="content">
+
+  <div class="header">
+    <h1>Browse Courses</h1>
+  </div>
+
+  <div class="content">
+    <div class="pure-g pure-form-stacked">
+
+      <div class="pure-u-1">
+        <label for="email">Major</label>
+        <select name="major-name" id="major-name">
+          <option value="-">-</option>
+          {% for major in majors %}
+            <option value="{{ major['value'] }}">{{ major['text'] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="pure-u-1">
+        <label for="email">Filter by Course #</label>
+        <select name="class-filter" id="class-filter">
+          <option value="-">-</option>
+        </select>
+      </div>
+
+
+      <div class="pure-u-1">
+        <a class="pure-button pure-button-primary" id="search" href="#">Search</a>
+      </div>
+
+
+      <div class="pure-u-1">
+        <table class="pure-table pure-table-horizontal pure-table-striped">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Title</th>
+              <th>Section</th>
+              <th>Credits</th>
+              <th>Times</th>
+            </tr>
+          </thead>
+          <tbody>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+
+{% block js %}
+<script>
+  (function() {
+    var currentCourses = [];
+    var courseNumbers = [];
+
+    var renderTable = function(courses) {
+      return courses.map(function(course) {
+        return course.SECTION.map(function(section) {
+
+          var times = section.times;
+          if (times === '')
+            times = 'ARRANGED';
+
+          var section = section.section;
+          if (section === '')
+            section = '-';
+
+          return [
+            '<tr>',
+              '<td>', course.COURSE,'</td>',
+              '<td>', course.TITLE,'</td>',
+              '<td>', section,'</td>',
+              '<td>', course.CREDIT,'</td>',
+              '<td>', times,'</td>',
+            '</tr>'
+          ].join('');
+        }).join('');
+      }).join('');
+    };
+
+    var getCourseNumbers = function(currentCourses) {
+      var filterDict = {};
+
+      return currentCourses.filter(function(course, pos) {
+        if (filterDict.hasOwnProperty(course.COURSE))
+          return false;
+
+        filterDict[course.COURSE] = true;
+        return true;
+      }).map(function(course) {
+        return course.COURSE;
+      });
+    };
+
+    var renderFilterOptions = function(courseNumbers) {
+      return courseNumbers.map(function(courseNumber) {
+        return [
+          '<option val="',courseNumber,'">', courseNumber, '</option>'
+        ].join('');
+      }).join('');
+    };
+
+
+    $('#class-filter').change(function(data) {
+        var value = $(this).val();
+        $('tbody').html(renderTable(currentCourses.filter(function(course) {
+          return course.COURSE === value;
+        })));
+    });
+
+    $('#major-name').change(function(data) {
+      currentCourses = data;
+
+      var majorName = $(this).val();
+      if (majorName === '-') {
+        return;
+      }
+
+      $.get('/static/data/' + majorName + '.json').done(function(courses) {
+        currentCourses = courses;
+        courseNumbers = ['-'].concat(getCourseNumbers(currentCourses));
+
+        $('#class-filter').html(renderFilterOptions(courseNumbers));
+        $('tbody').html(renderTable(currentCourses));
+      });
+    });
+
+  }());
+
+</script>
+
+{% endblock %}
