@@ -1,17 +1,482 @@
 {% extends "base.html" %}
 
-{% block title %}About{% endblock %}
+{% block title %}Schedule{% endblock %}
 
 {% block css %}
 <style type="text/css">
+#search {
+  margin-top: 15px;
+}
+table {
+  margin-top: 15px;
+  font-size: 12px;
+  width:100%;
+  margin-bottom: 30px;
+}
+
+canvas {
+  margin-top:10px;
+}
+.pure-menu {
+  margin-bottom: 20px;
+}
 
 </style>
 {% endblock %}
 
 {% block content %}
-Schedule
 
+<div class="content">
+
+  <div class="header">
+    <h1>Schedule Courses</h1>
+  </div>
+
+  <div class="content">
+
+
+    <div class="pure-g pure-form-stacked">
+
+      <div class="pure-menu pure-u-1 pure-menu-open pure-menu-horizontal">
+          <ul>
+              <li class="pure-menu-selected"><a href="#" class="add">Add Course</a></li>
+              <li><a href="#" class="generate">Generate Schedule</a></li>
+          </ul>
+      </div>
+
+
+      <div class="pure-u-1 generator">
+        <button id="gen-schedule" class="pure-button pure-button-primary">Generate Schedule</button>
+        <table class="pure-table pure-table-horizontal pure-table-striped">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Title</th>
+              <th>Credits</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody class="schedule generator">
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pure-u-1 generator">
+        <button id="prev" class="pure-button">&lt;</button>
+        <span id="pagination">0 of 0</span>
+        <button id="next" class="pure-button">&gt;</button>
+      </div>
+      <div class="pure-u-1 generator">
+        <canvas id="schedule-canvas" width="800" height="450"></canvas>
+      </div>
+
+
+      <div class="pure-u-1 adder">
+        <label for="email">Major</label>
+        <select name="major-name" id="major-name">
+          <option value="-">-</option>
+          {% for major in majors %}
+            <option value="{{ major['value'] }}">{{ major['text'] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="pure-u-1 adder">
+        <label for="email">Filter by Course #</label>
+        <select name="class-filter" id="class-filter">
+          <option value="-">-</option>
+        </select>
+      </div>
+
+      <div class="pure-u-1 adder">
+
+        <table class="pure-table pure-table-horizontal pure-table-striped">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Title</th>
+              <th>Credits</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody class="browse">
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
 {% endblock %}
 
 
-{% block js %}{% endblock %}
+{% block js %}
+<script>
+  // needs a lot of clean up ¯\_(ツ)_/¯
+  // had to do a lot of "hacking" to get the basic prototype working
+  (function() {
+    $('.generator').hide();
+
+    $('.generate').click(function(e) {
+      $(this).parent().addClass('pure-menu-selected');
+      $('.add').parent().removeClass('pure-menu-selected');
+
+      $('.generator').show();
+      $('.adder').hide();
+      e.preventDefault();
+    });
+
+    $('.add').click(function(e) {
+      $(this).parent().addClass('pure-menu-selected');
+      $('.generate').parent().removeClass('pure-menu-selected');
+
+      $('.generator').hide();
+      $('.adder').show();
+      e.preventDefault();
+    });
+    
+
+    var canvas = document.getElementById('schedule-canvas');
+    var ctx = canvas.getContext('2d');
+    var leftMargin = 80;
+    var topMargin = 30;
+    var width = canvas.width;
+    var wInc = (width-leftMargin)/16;
+    var height = canvas.height;
+    var hInc = (height-topMargin)/6;
+
+    var resetScheduleCanvas = function(canvas, context) {
+      context.fillStyle='#f2f2f2;';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.lineWidth = 1;
+      context.strokeStyle = 'black';
+      context.fillStyle='black';
+
+      var startTime = 5;
+      for(var i=leftMargin; i <=width+leftMargin; i+=wInc) {
+          context.beginPath();
+          context.lineTo(i, 0);
+          context.lineTo(i, height); 
+          context.fillText([startTime+1, ':00'].join(''), i+5, 10);
+          startTime = (startTime + 1)%12;
+          context.stroke();
+      }
+
+      var fooDay = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      for(var i =topMargin; i <=height+topMargin; i+=hInc) {
+          context.beginPath();
+          context.lineTo(0, i);
+          context.lineTo(width, i); 
+          context.fillText(fooDay.shift(), 0, i-10);
+          context.stroke();
+      }
+    };
+    resetScheduleCanvas(canvas, ctx);
+
+    var dayMap = {
+      'M': 0,
+      'T': 1,
+      'W': 2,
+      'R': 3,
+      'F': 4,
+      'S': 5
+    };
+
+    var drawTime = function(context, day, timeRange, color, text) {
+      if (timeRange.length === 1)
+        return false;
+      context.fillStyle = color;
+      var boxX = leftMargin+((timeRange[0] - 600)/100)*wInc;
+      var boxY = topMargin+dayMap[day]*hInc;
+      var diff = timeRange[1] - timeRange[0];
+
+      context.fillRect(boxX,
+                       boxY,
+                       ((diff%100)/60 + (diff-(diff%100))/100)* wInc,
+                       hInc);
+
+      context.fillStyle = 'black';
+      context.fillText(text, boxX, boxY+10);
+    };
+
+
+    String.prototype.endsWith = function(suffix) {
+        return this.indexOf(suffix, this.length - suffix.length) !== -1;
+    };
+
+    var hashCode = function(s){
+      return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);
+    };
+
+    var courseIDMap = {};
+    var currentCourses = [];
+    var courseNumbers = [];
+    var selectedCourses = [];
+    var combos = [];
+    var combosIndex = 0;
+
+    var days = ['M', 'T', 'W', 'R', 'F'];
+    var parseTime = function(times) {
+
+      var x = times.split(' ');
+      var z = {
+        'M': [],
+        'T': [],
+        'W': [],
+        'R': [],
+        'F': [],
+      };
+
+      var n = [];
+      x.forEach(function(y) {
+        if (days.indexOf(y) !== -1) {
+          n.push(y);
+        } else {
+          var timeFrame = y.replace(/:/g,'').split('-');
+          timeFrame = timeFrame.map(function(f) {
+            var g = parseInt(f);
+            if (f.endsWith('pm') && g < 1200) {
+              return g + 1200;
+            } else {
+              return g;
+            }
+          });
+          n.forEach(function(f) {
+            z[f].push(timeFrame);
+          });
+        }
+      });
+      return z;
+    };
+
+    var colors = ['#379154', '#39B4BF', '#FFE666', '#946FB0', '#E64E67', '#A6B9FF', '#95997A'];
+
+    $('#gen-schedule').click(function(e) {
+      var scheduling = {};
+      var cids = [];
+      selectedCourses.forEach(function(course) {
+        scheduling[course.uid] = [];
+        cids.push(course.uid);
+        course.SECTION.forEach(function(section) {
+          scheduling[course.uid].push(parseTime(section.times));
+        });
+      });
+
+      combosIndex = 0;
+      combos = [];
+      var sum = cids.reduce(function(sum, cid) {
+        return sum * scheduling[cid].length;
+      }, 1);
+
+      var index = 0;
+
+      cids.forEach(function(cid) {
+        console.log(selectedCourses);
+        var label = selectedCourses.filter(function(courses) {
+          return courses.uid === cid;
+        })[0].courseLabel;
+
+        for (var i = 0; i < sum; i++) {
+          if (combos[i] === undefined)
+            combos[i] = [];
+
+          combos[i][index] = scheduling[cid][i%scheduling[cid].length];
+
+
+          combos[i][index].classType = label
+        }
+        index = index + 1;
+      });
+      
+      combos = combos.filter(function(combo) {
+        return isLegalCombo(combo);
+      });
+      combos = uniqBy(combos, JSON.stringify);
+      combos
+      console.log(combos);
+      drawIthSchedule(0);
+
+
+    });
+
+    var uniqBy = function(ary, key) {
+        var seen = {};
+        return ary.filter(function(elem) {
+            var k = key(elem);
+            return (seen[k] === 1) ? 0 : seen[k] = 1;
+        })
+    };
+    var isOverlapping = function(x1,x2,y1,y2) {
+      return Math.max(x1,y1) <= Math.min(x2,y2);
+    };
+    
+    var isLegalCombo = function(combo) {
+      var result = true;
+      days.forEach(function(day) {
+        if (!result)
+          return;
+
+        var c = combo.map(function(item) {
+          return item[day];
+        }).filter(function(item) {
+          return item !== undefined && item.length > 0;
+        });
+
+
+        for(var i=0; i< c.length; i++) {
+          for(var j=0; j< c.length; j++) {
+            if (i ===j)
+              continue;
+
+            result = result|isOverlapping(c[i][0], c[i][1], c[j][1], c[i][1]);
+
+          }
+        }
+
+      });
+      return result;
+    };
+
+    $('body').on('click', '.remove-button', function(e) {
+      var removeId = this.id;
+      selectedCourses = selectedCourses.filter(function(courses) {
+        console.log(courses);
+        return courses.uid == removeId;
+      });
+      console.log(removeId);
+
+      $(this).parent().parent().remove();
+    });
+
+
+    $('body').on('click', '.add-button', function(e) {
+      var courseToAdd = courseIDMap[this.id];
+
+      var duplicated = selectedCourses.filter(function(courses) {
+        return courses.uid === courseToAdd.uid;
+      });
+      if (duplicated.length === 0) {
+        selectedCourses.push(courseToAdd);
+        var render = [
+          '<tr>',
+            '<td>', courseToAdd.COURSE,'</td>',
+            '<td>', courseToAdd.TITLE,'</td>',
+            '<td>', courseToAdd.CREDIT,'</td>',
+            '<td><button id="', courseToAdd.uid,'"class="pure-button remove-button button-error">-</button></td>',
+          '</tr>'
+        ].join('');
+        $('tbody.schedule').append(render);
+      }
+    });
+
+    var drawIthSchedule = function(index) {
+      resetScheduleCanvas(canvas, ctx);
+      if (combos.length === 0) {
+        $('#pagination').text('0 of 0');
+
+        return;
+      }
+
+      
+
+      if (index >= combos.length) {
+        index = index % combos.length;
+      } else if (index < 0) {
+        index = combos.length + (index % combos.length) - 1;
+      }
+
+      $('#pagination').text([index+1, 'of', combos.length].join(' '));
+
+      combos[index].forEach(function(combo, cIndex) {
+        var last = false;
+        days.forEach(function(day) {
+          combo[day].forEach(function(item) {
+            drawTime(ctx, day, item, colors[cIndex], combo.classType);
+          });
+        });
+      });
+    };
+
+
+    $('#next').click(function(e) {
+      drawIthSchedule(++combosIndex);
+    });
+
+    $('#prev').click(function(e) {
+      drawIthSchedule(--combosIndex);
+    });
+
+    var renderTable = function(courses) {
+      courseIDMap = {};
+      var major = $('#major-name').val();
+      return courses.map(function(course) {
+        course.major = major;
+        course.courseLabel = [course.major, course.COURSE].join(' ');
+        course.uid = hashCode([major, course.COURSE, course.TITLE].join(''));
+        courseIDMap[course.uid] = course
+        return [
+          '<tr>',
+            '<td>', course.COURSE,'</td>',
+            '<td>', course.TITLE,'</td>',
+            '<td>', course.CREDIT,'</td>',
+            '<td><button id="', course.uid,'"class="pure-button add-button button-success">+</button></td>',
+          '</tr>'
+        ].join('');
+      }).join('');
+    };
+
+    var getCourseNumbers = function(currentCourses) {
+      var filterDict = {};
+
+      return currentCourses.filter(function(course, pos) {
+        if (filterDict.hasOwnProperty(course.COURSE))
+          return false;
+
+        filterDict[course.COURSE] = true;
+        return true;
+      }).map(function(course) {
+        return course.COURSE;
+      });
+    };
+
+    var renderFilterOptions = function(courseNumbers) {
+      return courseNumbers.map(function(courseNumber) {
+        return [
+          '<option val="',courseNumber,'">', courseNumber, '</option>'
+        ].join('');
+      }).join('');
+    };
+
+
+    $('#class-filter').change(function(data) {
+        var value = $(this).val();
+        $('tbody.browse').html(renderTable(currentCourses.filter(function(course) {
+          return course.COURSE === value || value === '-';
+        })));
+    });
+
+    $('#major-name').change(function(data) {
+      currentCourses = data;
+
+      var majorName = $(this).val();
+      if (majorName === '-') {
+        return;
+      }
+
+      $.get('/static/data/' + majorName + '.json').done(function(courses) {
+        currentCourses = courses;
+        courseNumbers = ['-'].concat(getCourseNumbers(currentCourses));
+
+        $('#class-filter').html(renderFilterOptions(courseNumbers));
+        $('tbody.browse').html(renderTable(currentCourses));
+      });
+    });
+
+  }());
+
+</script>
+
+{% endblock %}
