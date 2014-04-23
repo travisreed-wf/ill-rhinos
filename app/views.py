@@ -31,3 +31,13 @@ def schedule():
 @blueprint.route('/about', methods=['GET'])
 def about():
     return render_template('about.html')
+
+@blueprint.route('/alerts', methods=['GET'])
+def alerts():
+    return render_template('alerts.html')
+
+@blueprint.route('/login', methods=['POST'])
+def login():
+    data = request.data
+    print data
+    return ""

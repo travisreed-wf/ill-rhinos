@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}About{% endblock %}
+
+{% block css %}
+<style type="text/css">
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="content">
+
+  <div class="header">
+    <h1>Set Up Class Alerts</h1>
+  </div>
+
+  <div class="content">
+    <form class="pure-form">
+        <div class="pure-u-1-8"></div>
+        <div class="pure-u-1-3">
+            <input type="email" id="email" placeholder="Email">
+        </div>
+        <div class="pure-u-1-2">
+            <input type="password" id="password" placeholder="Password">
+            <button id="submit" class="pure-button pure-button-primary">Sign in</button>
+        </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    $('#submit').click(function (e){
+        var email = $('#email').val();
+        var pw = $('#password').val();
+        console.log(email, pw);
+
+        $.ajax({
+                url: '{{ url_for("views.login") }}',
+                data: 'email=' + email + "pw" = pw,
+                type: 'POST',
+                success: function (data, status, jqxhr) {
+                    console.log("Success");
+                }
+        })
+
+        e.preventDefault();
+    });
+
+</script>
+
+
+{% endblock %}

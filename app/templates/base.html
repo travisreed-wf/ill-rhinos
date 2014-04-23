@@ -71,6 +71,9 @@
       <li class="{%if request.path == url_for('views.browse')%}pure-menu-selected{%endif%}">
         <a href="{{ url_for('views.browse') }}">Browse</a>
       </li>
+      <li class="{%if request.path == url_for('views.alerts')%}pure-menu-selected{%endif%}">
+        <a href="{{ url_for('views.alerts') }}">Class Alerts</a>
+      </li>
       <li class="{%if request.path == url_for('views.about')%}pure-menu-selected{%endif%}">
         <a href="{{ url_for('views.about') }}">About Us</a>
       </li>
